@@ -31,6 +31,7 @@
          as_dict/1,
          as_json/1,
          as_proplist/1,
+         as_proplists/1,
          as_record/3,
          as_record/4,
          bxor_binary/2,
@@ -98,6 +99,16 @@ as_proplist(Res = #result_packet{field_list=Cols,rows=Vals}) when is_list(Cols),
             Data
     end,
     dualmap(fun(A,B)->{A,B} end, FieldData, RowData).
+
+as_proplists(#result_packet{field_list=_Cols,rows=_Vals}) when _Cols =:= undefined, _Vals =:= undefined ->
+    [];
+as_proplists(#result_packet{field_list=_Cols,rows=_Vals}) when is_list(_Cols), _Vals =:= undefined ->
+    [];
+as_proplists(#result_packet{field_list=_Cols,rows=_Vals}) when is_list(_Cols), _Vals =:= [] ->
+    [];
+as_proplists(Res = #result_packet{field_list=Cols,rows=Vals}) when is_list(Cols), is_list(Vals) ->
+    FieldData = field_names(Res),
+    [dualmap(fun(A,B)->{A,B} end, FieldData, Data) || Data <- Vals].
 
 %% @spec as_record(Result, RecordName, Fields, Fun) -> Result
 %%      Result = #result_packet{}
@@ -266,8 +277,12 @@ encode(undefined, binary)  ->
     <<"null">>;
 encode(Val, list) when is_binary(Val) ->
     quote(binary_to_list(Val));
+encode(Val, list) when is_boolean(Val) ->
+    atom_to_list(Val);
 encode(Val, binary) when is_atom(Val) ->
     encode(atom_to_list(Val), binary);
+encode(Val, binary) when is_boolean(Val) ->
+    encode(atom_to_list(Val), binary);    
 encode(Val, binary) when is_list(Val) -> 
     list_to_binary(quote(Val));
 encode(Val, binary) when is_binary(Val) ->
